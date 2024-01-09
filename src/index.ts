@@ -10,7 +10,7 @@
 
 export interface Env {
 	// Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
-	// MY_KV_NAMESPACE: KVNamespace;
+	TRY_KV: KVNamespace;
 	//
 	// Example binding to Durable Object. Learn more at https://developers.cloudflare.com/workers/runtime-apis/durable-objects/
 	// MY_DURABLE_OBJECT: DurableObjectNamespace;
@@ -27,6 +27,18 @@ export interface Env {
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		return new Response('Hello World!');
+		try {
+			await env.TRY_KV.put('KEY', 'VALUE');
+			const value = await env.TRY_KV.get('KEY');
+			if (value === null) {
+				return new Response('Value not found', { status: 404 });
+			}
+			return new Response(value);
+		} catch (err) {
+			// In a production application, you could instead choose to retry your KV
+			// read or fall back to a default code path.
+			console.error(`KV returned error: ${err}`);
+			return new Response(err ? err.toString() : 'error', { status: 500 });
+		}
 	},
 };
